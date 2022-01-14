@@ -2,6 +2,8 @@ import os
 import subprocess
 import paramiko
 import yaml
+import tqdm
+
 
 # 当前路径
 from paramiko.ssh_exception import NoValidConnectionsError, AuthenticationException
@@ -134,9 +136,9 @@ def putFile(yamlTemp):
 
         print(remotePath)
         for localConfig in yamlTemp["upload"]["file"]:
-            sftp.put(os.path.abspath(localConfig["local-path"]), remotePath + localConfig["remote-file"])
-
-            execCmd(yamlTemp, localConfig["cmd"])
+            sftp.put(os.path.abspath(localConfig["local-path"]), remotePath + localConfig["remote-file"],callback=printTotals)
+            # 执行启动命令
+            execCmd(yamlTemp, localConfig["cmd"]+" "+localConfig["container-name"]+ " "+localConfig["image-name"] +" "+ remotePath + localConfig["remote-file"])
     except Exception as e:
         print(e)
 
@@ -147,17 +149,22 @@ def putFile(yamlTemp):
         linuxLink.close()
 
 
-def execCmd(yamlTemp):
+def execCmd(yamlTemp,cmd):
     # 链接到linux
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
         ssh.connect(yamlTemp["host"], port=yamlTemp["port"], username=yamlTemp["username"],
                     password=yamlTemp["password"])
+        print("执行命令:",cmd)
+
         stdin, stdout, stderr = ssh.exec_command(cmd)
-        # 获取命令结果
-        result = stdout.read()
-        print(result)
+
+        out,err = stdout.read(),stderr.read()
+        if err:
+          print(err)
+        else:
+          print(out)
     except NoValidConnectionsError:
         print('连接出现了问题')
     except AuthenticationException:
@@ -168,6 +175,9 @@ def execCmd(yamlTemp):
         print("关闭ssh连接...")
         ssh.close()
 
+# 进度条
+def printTotals(transferred, toBeTransferred):
+    print("已上传: {0}\t总大小: {1}".format(transferred, toBeTransferred))
 
 if __name__ == "__main__":
     num = input("请输入数字:\n"

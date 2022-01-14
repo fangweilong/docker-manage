@@ -1,11 +1,13 @@
 host: 10.10.10.10
 port: 22
 username: root
-password: 123456
+password: 123456789
 upload:
-  remote-path: /home/upload-test/
+  remote-path: /home/atlas/upload-test/
   file:
-    - local-path: ./test.txt # 本地文件的路径
+    - local-path: ./getting-started.tar # 本地文件的路径
       # 服务器上想使用的名字 一般与源文件相同
-      remote-file: test.txt
-      cmd: sh /home/upload-test/restart-image.sh
+      remote-file: getting-started.tar
+      container-name: getting-started
+      image-name: docker/getting-started
+      cmd: python3 /home/atlas/upload-test/docker-manage.py
