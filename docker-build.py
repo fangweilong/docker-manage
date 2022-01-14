@@ -5,12 +5,18 @@ import yaml
 import tqdm
 
 
+
 # 当前路径
 from paramiko.ssh_exception import NoValidConnectionsError, AuthenticationException
 
 DIR = os.path.abspath(os.path.dirname(__file__))
+
+# 读取配置文件
+file = open(DIR + "/config.yaml", 'r', encoding="utf-8")
+yamlConfig = yaml.load(file, Loader=yaml.Loader)
+
 # 运行的主路径
-dockerBuildPath = DIR + "../../../"
+dockerBuildPath = DIR +yamlConfig["build"]["path"]
 
 
 # 执行命令行
@@ -110,24 +116,22 @@ def saveDockerBuildFile():
 
 # 上传image到服务器上
 def uploadDockerImageToServer():
-    # 读取配置文件
-    file = open(DIR + "/config.yaml", 'r', encoding="utf-8")
-    yamlTemp = yaml.load(file, Loader=yaml.Loader)
 
-    putFile(yamlTemp)
+
+    putFile()
 
 
 # 上传文件
-def putFile(yamlTemp):
+def putFile():
     linuxLink = None
     sftp = None
 
     try:
         # 链接到sftp
-        linuxLink = paramiko.Transport(yamlTemp["host"], yamlTemp["port"])
-        linuxLink.connect(username=yamlTemp["username"], password=yamlTemp["password"])
+        linuxLink = paramiko.Transport(yamlConfig["host"], yamlConfig["port"])
+        linuxLink.connect(username=yamlConfig["username"], password=yamlConfig["password"])
         sftp = paramiko.SFTPClient.from_transport(linuxLink)
-        remotePath = yamlTemp["upload"]["remote-path"]
+        remotePath = yamlConfig["upload"]["remote-path"]
         # 是否需要建立目录
         try:
             sftp.chdir(remotePath)
@@ -135,10 +139,10 @@ def putFile(yamlTemp):
             sftp.mkdir(remotePath)
 
         print(remotePath)
-        for localConfig in yamlTemp["upload"]["file"]:
+        for localConfig in yamlConfig["upload"]["file"]:
             sftp.put(os.path.abspath(localConfig["local-path"]), remotePath + localConfig["remote-file"],callback=printTotals)
             # 执行启动命令
-            execCmd(yamlTemp, localConfig["cmd"]+" "+localConfig["container-name"]+ " "+localConfig["image-name"] +" "+ remotePath + localConfig["remote-file"])
+            execCmd(localConfig["cmd"]+" "+localConfig["container-name"]+ " "+localConfig["image-name"] +" "+ remotePath + localConfig["remote-file"])
     except Exception as e:
         print(e)
 
@@ -149,22 +153,22 @@ def putFile(yamlTemp):
         linuxLink.close()
 
 
-def execCmd(yamlTemp,cmd):
+def execCmd(cmd):
     # 链接到linux
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
-        ssh.connect(yamlTemp["host"], port=yamlTemp["port"], username=yamlTemp["username"],
-                    password=yamlTemp["password"])
+        ssh.connect(yamlConfig["host"], port=yamlConfig["port"], username=yamlConfig["username"],
+                    password=yamlConfig["password"])
         print("执行命令:",cmd)
 
         stdin, stdout, stderr = ssh.exec_command(cmd)
 
         out,err = stdout.read(),stderr.read()
         if err:
-          print(err)
+          print("上传文件错误：",err)
         else:
-          print(out)
+          print("上传文件成功",out)
     except NoValidConnectionsError:
         print('连接出现了问题')
     except AuthenticationException:
