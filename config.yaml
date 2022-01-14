@@ -6,8 +6,11 @@ upload:
   remote-path: /home/atlas/upload-test/
   file:
     - local-path: ./getting-started.tar # 本地文件的路径
-      # 服务器上想使用的名字 一般与源文件相同
+      # 服务器上想使用的名字 一般与本地源文件相同
       remote-file: getting-started.tar
+      # 要移除的容器名字
       container-name: getting-started
+      # 要移除并重新加载的镜像名字
       image-name: docker/getting-started
+      # docker-manage.py执行命令
       cmd: python3 /home/atlas/upload-test/docker-manage.py
